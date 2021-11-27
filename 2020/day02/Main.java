@@ -37,6 +37,30 @@ no instances of b, but needs at least 1. The first and third passwords are valid
 both within the limits of their respective policies.
 
 How many passwords are valid according to their policies?
+Your puzzle answer was 398.
+
+The first half of this puzzle is complete! It provides one gold star: *
+
+--- Part Two ---
+While it appears you validated the passwords correctly, they don't seem to be what 
+the Official Toboggan Corporate Authentication System is expecting.
+
+The shopkeeper suddenly realizes that he just accidentally explained the password 
+policy rules from his old job at the sled rental place down the street! 
+The Official Toboggan Corporate Policy actually works a little differently.
+
+Each policy actually describes two positions in the password, where 1 means the first character,
+ 2 means the second character, and so on. (Be careful; Toboggan Corporate Policies
+ have no concept of "index zero"!) Exactly one of these positions must contain the given letter.
+  Other occurrences of the letter are irrelevant for the purposes of policy enforcement.
+
+Given the same example list from above:
+
+1-3 a: abcde is valid: position 1 contains a and position 3 does not.
+1-3 b: cdefg is invalid: neither position 1 nor position 3 contains b.
+2-9 c: ccccccccc is invalid: both position 2 and position 9 contain c.
+How many passwords are valid according to the new interpretation of the policies?
+answer: 562
  */
 
 
@@ -126,6 +150,25 @@ class Password{
         else 
             return false;
     }
+
+    public boolean isValidPart2(){
+        // e.g. policy -> '1-3 a'
+        //      password -> 'abcde'
+
+        // get the two positions and the letter
+        int pos1 = Integer.parseInt(policy.split("-")[0]); // gives '11'
+        String tmp = policy.split("-")[1];                // gives '17 c'
+        int pos2 = Integer.parseInt(tmp.split(" ")[0]);    // gives '17'
+        char letter = tmp.split(" ")[1].toCharArray()[0];                // gives 'c'
+
+        // check to see if the letter is in exactly one of the two positions
+        boolean in_pos1 = password.charAt(pos1 - 1) == letter;
+        boolean in_pos2 = password.charAt(pos2 - 1) == letter;
+        if (in_pos1 ^ in_pos2) // logical XOR (I think Java just uses a bit-wise, treating booleans as bits?)
+            return true;
+        else 
+            return false;
+    }
 }
 
 public class Main{
@@ -134,7 +177,7 @@ public class Main{
         String[] input_arr = FileReader.getLines("puzzle_input.txt");
         for (String line : input_arr) {
             Password pw = new Password(line);
-            if (pw.isValid())
+            if (pw.isValidPart2())
                 valid_passwords_count++;
         }
         
