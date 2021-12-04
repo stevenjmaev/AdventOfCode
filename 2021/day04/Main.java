@@ -78,6 +78,21 @@ The score of the winning board can now be calculated. Start by finding the sum o
 in this case, the sum is 188. Then, multiply that sum by the number that was just called when the board won, 24, to get the final score, 188 * 24 = 4512.
 
 To guarantee victory against the giant squid, figure out which board will win first. What will your final score be if you choose that board?
+
+Your puzzle answer was 16716.
+
+--- Part Two ---
+On the other hand, it might be wise to try a different strategy: let the giant squid win.
+
+You aren't sure how many bingo boards a giant squid could play at once, so rather than waste time counting its arms, the safe thing to do is to figure out which board will win last and choose that one. That way, no matter which boards it picks, it will win for sure.
+
+In the above example, the second board is the last to win, which happens after 13 is eventually called and its middle column is completely marked. If you were to keep playing until this point, the second board would have a sum of unmarked numbers equal to 148 for a final score of 148 * 13 = 1924.
+
+Figure out which board will win last. Once it wins, what would its final score be?
+
+Your puzzle answer was 4880.
+
+Both parts of this puzzle are complete! They provide two gold stars: **
  */
 
 public class Main{
@@ -103,7 +118,7 @@ public class Main{
                 }
                 // System.out.printf("marking number (%d) on board idx (%d)\n", guess, board_idx);
                 bb.MarkNumber(guess);
-                if (bb.winner)
+                if (bb.winner && !winning_board_idxs.contains(board_idx))   // if it's a NEW winner
                     winning_board_idxs.add(board_idx);
                 board_idx++;
             }
@@ -115,11 +130,29 @@ public class Main{
             if (!winningBoard.elements.get(num).marked)
                 sum += num;
         }
-
-        System.out.printf("winning board was: boardidx %d\n", winning_board_idxs.get(0));
+        System.out.println("");
+        System.out.println("PART ONE\n===========");
+        System.out.printf("FIRST winning board was: boardidx %d\n", winning_board_idxs.get(0));
         System.out.printf("last number called was: %d\n", winningBoard.winning_number);
         System.out.printf("sum of non-marked numbers for that board: %d\n", sum);
-        System.out.printf("product = %d", winningBoard.winning_number * sum);
+        System.out.printf("product = %d\n", winningBoard.winning_number * sum);
+
+
+
+        // add up all the unmarked numbers for the winning board
+        sum = 0;
+        winningBoard = boards.get(winning_board_idxs.get(winning_board_idxs.size() - 1));
+        for (int num : winningBoard.elements.keySet()){
+            if (!winningBoard.elements.get(num).marked)
+                sum += num;
+        }
+        System.out.println("");
+        System.out.println("PART TWO\n===========");
+        System.out.printf("LAST winning board was: boardidx %d\n", winning_board_idxs.get(winning_board_idxs.size() - 1));
+        System.out.printf("last number called was: %d\n", winningBoard.winning_number);
+        System.out.printf("sum of non-marked numbers for that board: %d\n", sum);
+        System.out.printf("product = %d\n", winningBoard.winning_number * sum);
+
         
     }
 }
@@ -218,7 +251,7 @@ class FileParser{
 class BingoBoard{
     Map<Integer, BingoBoardElement> elements = new HashMap<>();
     boolean winner = false;
-    int winning_number = -1;
+    int winning_number;
     private int width, height;
     
     
@@ -237,9 +270,11 @@ class BingoBoard{
     }
 
     public void MarkNumber(int number){
+        if (winner) // if the board won already, don't update it with new marks
+            return;
         elements.get(number).marked = true; // mark that number
         check_winner();        
-        if (winner && winning_number == -1)
+        if (winner)
             winning_number = number;
     }
 
