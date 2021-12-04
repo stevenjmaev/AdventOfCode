@@ -1,0 +1,7 @@
+{
+    "java.completion.filteredTypes" : [
+        "java.awt.List",
+        "com.sun.*"
+    ],
+
+}
