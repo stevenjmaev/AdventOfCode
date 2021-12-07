@@ -2,9 +2,7 @@ import java.awt.Point;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 
 import java.io.FileNotFoundException;
@@ -65,19 +63,223 @@ To avoid the most dangerous areas, you need to determine the number of points wh
 two lines overlap. In the above example, this is anwhere in the diagram with a 2 or larger - a total of 5 points.
 
 Consider only horizontal and vertical lines. At how many points do at least two lines overlap?
+
+Your puzzle answer was 4826.
+
+The first half of this puzzle is complete! It provides one gold star: *
+
+--- Part Two ---
+Unfortunately, considering only horizontal and vertical lines doesn't give you the full picture; you need to also consider diagonal lines.
+
+Because of the limits of the hydrothermal vent mapping system, the lines in your list will only ever be horizontal, 
+vertical, or a diagonal line at exactly 45 degrees. In other words:
+
+An entry like 1,1 -> 3,3 covers points 1,1, 2,2, and 3,3.
+An entry like 9,7 -> 7,9 covers points 9,7, 8,8, and 7,9.
+Considering all lines from the above example would now produce the following diagram:
+
+1.1....11.
+.111...2..
+..2.1.111.
+...1.2.2..
+.112313211
+...1.2....
+..1...1...
+.1.....1..
+1.......1.
+222111....
+You still need to determine the number of points where at least two lines overlap. In the above example, 
+this is still anywhere in the diagram with a 2 or larger - now a total of 12 points.
+
+Consider all of the lines. At how many points do at least two lines overlap?
+
+answer: 16793
  */
 
 public class Main{
     public static void main(String[] args) {
-        String file = "test.txt";
+        String file = "puzzle_input.txt";
         String[] lines = FileParser.getLines(file);
         
-        VentMap vm = new VentMap(lines);
+        VentMap vm = new VentMap(lines, true);
+        System.out.printf("number of overlaps: %d", vm.countIntersections(2));
     }
 }
 
 
 
+
+
+class VentLine{
+    Point start, end;
+
+    /**
+     * Parses a line description of the form
+     * x1,y1 -> x2,y2
+     * and generates a start and end point
+     */
+    public VentLine(String line_description){
+        // format: x1,y1 -> x2,y2
+        Scanner sc = new Scanner(line_description).useDelimiter(",| -> ");
+        int x = sc.nextInt();
+        int y = sc.nextInt();
+        start = new Point(x, y);
+
+        x = sc.nextInt();
+        y = sc.nextInt();
+        end = new Point(x,y);
+    }
+
+}
+
+class VentMap{
+    int width, height;
+    int[][] map;
+    boolean considerDiagonals;
+
+    /**
+     * Creates a map using an array of line descriptors of the form:
+     * x1,y1 -> x2,y2
+     */
+    public VentMap(String[] input_lines, boolean diagonals){
+        this.considerDiagonals = diagonals;
+        List<VentLine> ventLines = new ArrayList<>();
+        for (String line_description : input_lines) {
+            VentLine vl = new VentLine(line_description);
+            ventLines.add(vl);
+        }
+
+        // find the max X and Y so that we can set the size of the map
+        width = 0;
+        height = 0;
+        find_map_size(ventLines);
+        
+        map = new int[height][width];
+        for (int[] row : map) {
+            Arrays.fill(row, 0);
+        }
+
+        for (VentLine ventLine : ventLines) {
+            draw_line(ventLine);
+        }
+    }
+
+
+    /**
+     * Iterates over all the ventLines and looks for the maximum
+     * for X and for Y to determine the width and height, respectively
+     */
+    private void find_map_size(List<VentLine> ventLines){
+        for (VentLine ventLine : ventLines) {
+            if ((int)ventLine.start.getX() > width)
+                width = (int)ventLine.start.getX();
+            if ((int)ventLine.end.getX() > width)
+                width = (int)ventLine.end.getX();
+            
+            if ((int)ventLine.start.getY() > height)
+                height = (int)ventLine.start.getY();
+            if ((int)ventLine.end.getY() > height)
+                height = (int)ventLine.end.getY();
+        }
+        
+        // convert from indeces to size
+        width += 1;
+        height += 1;
+    }
+
+    /**
+     * Adds the given VentLine to the VentMap, incrementing 
+     * any spaces on the map that it falls on.
+     */
+    private void draw_line(VentLine line){
+        int x = (int)line.start.getX();
+        int y = (int)line.start.getY();
+        if (line.start.getX() == line.end.getX()){
+            // Draw a vertical line
+            int startY = (int)line.start.getY();
+            int endY = (int)line.end.getY();
+            if (endY > startY){
+                for (y = startY; y <= endY; y++){
+                        map[y][x]++;
+                    }
+            }
+            else{
+                for (y = startY; y >= endY; y--){
+                    map[y][x]++;
+                }
+            }
+            
+        }
+        else if (line.start.getY() == line.end.getY()){
+            // Draw a horizontal line
+            int startX = (int)line.start.getX();
+            int endX = (int)line.end.getX();
+            if (endX > startX){
+                for (x = startX; x <= endX; x++){
+                        map[y][x]++;
+                    }
+            }
+            else{
+                for (x = startX; x >= endX; x--){
+                    map[y][x]++;
+                }
+            }
+        }
+        else{
+            if (!considerDiagonals)
+                return;
+            // Draw 45deg diagonal line
+            int startX = (int)line.start.getX();
+            int startY = (int)line.start.getY();
+            int endX = (int)line.end.getX();
+            int endY = (int)line.end.getY();
+
+            // get the 'slope' for dx and dy (both either -1 or +1)
+            int dx = Integer.signum(endX - startX);
+            int dy = Integer.signum(endY - startY);
+            
+            while (x != endX || y != endY){
+                map[y][x]++;
+                x += dx;
+                y += dy;
+                if (x == endX && y == endY)
+                    map[y][x]++;
+            }
+
+        }
+    }
+
+    /**
+     * Prints the map... Used for debugging purposes only!
+     */
+    public void print(){
+        for (int row = 0; row < height; row++){
+            for (int col = 0; col < width; col++){
+                System.out.printf("%d\t", map[row][col]);
+            }
+            System.out.printf("\n");
+        }
+    }
+
+    /**
+     * Iterates over the map and counts how many intersections there are,
+     * allowing the user to define a `overlap_threshold` to determine what
+     * counts as an "intersection"
+     */
+    public int countIntersections(int overlap_threshold){
+        int count = 0;
+        for (int row = 0; row < height; row++){
+            for (int col = 0; col < width; col++){
+                if (map[row][col] >= overlap_threshold)
+                    count++;
+            }
+        }
+        return count;
+    }
+}
+
+
+// I should work on my java packaging know-how and put this in an external file / .jar-package
 /**
  * Contains helper functions for importing data from the 
  * puzzle input text file.
@@ -126,66 +328,4 @@ class FileParser{
 
         return arr;
     }
-}
-
-
-class VentMap{
-    int width, height;
-    int[][] map;
-    public VentMap(String[] input_lines){
-        List<VentLine> ventLines = new ArrayList<>();
-        for (String line_description : input_lines) {
-            VentLine vl = new VentLine(line_description);
-            ventLines.add(vl);
-        }
-
-        // find the max X and Y so that we can set the size of the map
-        width = 0;
-        height = 0;
-        for (VentLine ventLine : ventLines) {
-            if ((int)ventLine.start.getX() > width)
-                width = (int)ventLine.start.getX();
-            if ((int)ventLine.end.getX() > width)
-                width = (int)ventLine.end.getX();
-            
-            if ((int)ventLine.start.getY() > height)
-                height = (int)ventLine.start.getX();
-            if ((int)ventLine.end.getY() > height)
-                height = (int)ventLine.end.getX();
-        }
-        
-            // convert from indeces to size
-            width += 1;
-            height += 1;
-        
-        map = new int[height][width];
-
-        for (VentLine ventLine : ventLines) {
-            draw_line(ventLine);
-        }
-    }
-
-    private void draw_line(VentLine line){
-        
-    }
-}
-
-
-class VentLine{
-    Point start, end;
-    List<Point> ventLocations;
-
-    public VentLine(String line_description){
-        // format: x1,y1 -> x2,y2
-        Scanner sc = new Scanner(line_description).useDelimiter(",| -> ");
-        int x = sc.nextInt();
-        int y = sc.nextInt();
-        start = new Point(x, y);
-
-        x = sc.nextInt();
-        y = sc.nextInt();
-        end = new Point(x,y);
-        System.out.println(start);
-    }
-
 }

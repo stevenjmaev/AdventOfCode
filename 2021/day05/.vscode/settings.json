@@ -1,7 +1,7 @@
 {
     "java.completion.filteredTypes" : [
         "java.awt.List",
-        "com.sun.*"
+        "com.sun.*",
         "javatuples.*"
     ],
     "java.project.referencedLibraries": [
