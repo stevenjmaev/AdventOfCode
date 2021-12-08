@@ -9,6 +9,7 @@ import java.util.Scanner;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -95,84 +96,52 @@ How many lanternfish would there be after 256 days?
 public class Main{
     public static void main(String[] args) {
         String file = "puzzle_input.txt";
-        Map<Integer, Integer> bins = FileParser.getBins(file, 1, 5);
-        List<Fish> fishtypes = new ArrayList<>();
+        long[] clk_bins = FileParser.getBins(file);
 
-        // create a new fishtype for every binNum
-        // (the binNum represents the initial internal timer for that fish)
-        for (short binNum = 1; binNum <= 5; binNum++){
-            Fish f = new Fish(binNum);
-            fishtypes.add(f);
-        }
+        for (int day = 0; day <= 256; day++){
 
-        int days = 256;
-
-
-        // Note: I've categorized the fish into: 
-        // fishtypes (initial fish), and spawns (all other fish)
-        for (int day = 0; day <= days; day++){
-            // System.out.printf("day %d:\t", day);
-
-            for (Fish fish : fishtypes) {
-                if (fish.time_to_spawn)
-                    fish.spawns.add(new Fish((short)8));
-                fish.advanceDay();
-
-                // I need to iterate by idx rather than foreach b/c 
-                // iterating by foreach depends on the list to be of fixed size during iteration
-                // i.e. I can't update the list and iterate through it simultaneously in foreach loop
-                for (int fish_spawn_idx = 0; fish_spawn_idx < fish.spawns.size(); fish_spawn_idx++){
-                    if (fish.spawns.get(fish_spawn_idx).time_to_spawn)
-                        fish.spawns.add(new Fish((short)8));
-                    fish.spawns.get(fish_spawn_idx).advanceDay();
-                }
+            if (day == 80 || day == 256){
+                long count = 0;
+                // print_bins(clk_bins, day);
+                for (long i : clk_bins)
+                    count+=i;
+                System.out.printf("day: %d   fish count = %d\n", day, count);
             }
 
-            long fish_count = 0;
-
-            for (Fish fish : fishtypes){
-                // the `(1 + spawns.size())` allows me to only keep track of the spawns
-                // for a single type of fish, and then just multiply based on how many 
-                // instances of that fish_type there were in the beginning
-                fish_count += bins.get((int)fish.bin_type) * (1 + fish.spawns.size());
+            // how many fish have their timers expired? (in bins[0])
+            long expired_timer_fish = 0;
+            if (clk_bins[0] != 0){
+                expired_timer_fish = clk_bins[0];
             }
 
-            if (day == 80)
-                System.out.printf("  num of fish on day %d: %d\n", day, fish_count);
-            if (day == 256)
-                System.out.printf("  num of fish on day %d: %d\n", day, fish_count);
-            // System.out.printf("\n");
+            // move the fish from one bin to another, depending on where they're starting from
+            for (int i = 0; i <= 8; i++) { 
+                if (i == 6)
+                    clk_bins[i] = expired_timer_fish + clk_bins[7];   // move the fish that were in 7 to here as well as the ones whose timers are up
+                else if (i == 7)
+                    clk_bins[i] = clk_bins[8];
+                else if (i == 8)
+                    clk_bins[i] = expired_timer_fish;
+                else
+                    clk_bins[i] = clk_bins[i + 1];  // transfer the normal fishes to the next bin down
+            }
         }
-        
+    }
+
+    private static void print_bins(long[] bins, int day){
+        System.out.printf("\nday %d:  \n", day);
+        for (int i = 0; i < bins.length; i++)
+            System.out.printf("%d  ", i);
+        System.out.println("\n-------------------------");
+
+        for (long i : bins) {
+            System.out.printf("%d  ", i);
+        }
+        System.out.println("");
+
     }
 }
 
-
-class Fish{
-    // a list of all the children and grandchildren for the initial fish (the spawns won't have any spawns, for simplicity)
-    List<Fish> spawns = new ArrayList<>();
-    short timer;
-    short bin_type;
-    boolean time_to_spawn;
-
-    public Fish(short initial_timer){
-        this.bin_type = initial_timer;
-        this.timer = initial_timer;
-        time_to_spawn = false;
-    }
-
-    public void advanceDay(){
-        if (timer == 0){
-            timer = 6;
-            time_to_spawn = true;
-        }
-        else{
-            time_to_spawn = false;
-            timer--;
-        }
-        
-    }
-}
 
 /**
  * Contains helper functions for importing data from the 
@@ -225,34 +194,22 @@ class FileParser{
 
     /**
      * Takes in the name of a text file that has a single line in it with
-     * numbers separated by commas and returns a map of bins.
-     * Each bin (key-value pair) is representative of how many instances of a certain number there are
-     * in the file. 
-     * e.g. if the file contains
-     * 1,1,1,1,3,4,5
-     * the function will return the following hashmap:
-     *    |key|value|
-     *    | 1 |  4  |
-     *    | 2 |  0  |
-     *    | 3 |  1  |
-     *    | 4 |  1  |
-     *    | 5 |  1  |
+     * numbers separated by commas and returns an array representing bins.
+     * Each bin holds a number of how many instances of fish have a given number of days
+     * in their internal clock left. 
+     * 
+     * e.g. given an input 1,1,3,5,2,4,4,4
+     * it will return the following array: {0, 2, 1, 1, 3, 1}
      */
-    public static Map<Integer, Integer> getBins(String filename, int min_val, int max_val){
-        Map<Integer, Integer> bins = new HashMap<>();
-
+    public static long[] getBins(String filename){
+        long[] bins = new long[9]; // bin labels are 0~5 (inclusive)
+        Arrays.fill(bins, 0);
         File input = new File(filename);
-        int arr_idx = 0;
-        for (int num = min_val; num <= max_val; num++){
-            bins.put(num, 0); // add all the possible bins to the hashmap
-        }
         try {
             Scanner sc = new Scanner(input).useDelimiter(",");
             while (sc.hasNext()){
                 int num = Integer.parseInt(sc.next());
-                int prev_count = bins.get(num);
-                bins.replace(num, prev_count + 1);   // increment the bin for that number
-                arr_idx++;
+                bins[num]++;
             }
             sc.close();
         } catch (FileNotFoundException e) {}
