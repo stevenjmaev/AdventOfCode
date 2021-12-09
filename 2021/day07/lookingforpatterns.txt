@@ -1,0 +1,44 @@
+// Thoughts:
+// start them all off at the beginning, and just account for the different starting days at the end
+// looks like for a single fish, it has a new baby fish once every 8 days
+// 
+
+
+
+1,
+0,
+6,8,
+5,7,
+4,6,
+3,5,
+2,4,
+1,3,
+0,2,
+6,1,8
+5,0,7
+4,6,6
+3,5,5
+2,4,4
+1,3,3
+0,2,2
+6,1,1
+5,0,0
+4,6,6
+3,5,5
+2,4,4
+1,3,3
+0,2,2
+6,1,1
+5,0,
+4,6,
+3,5,
+2,4,
+1,3,
+0,2,
+6,1,
+5,0,
+4,6,
+3,5,
+2,4,
+1,3,
+0,2,
