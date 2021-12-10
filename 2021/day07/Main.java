@@ -1,73 +1,83 @@
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.IntSummaryStatistics;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
-
+import java.util.stream.IntStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import StdStats.StdStats;
 
+/**
+ * Note to self:
+ * Maybe try to calculate the IQR and exclude outliers from that..
+ */
 
 public class Main{
     public static void main(String[] args) {
-        String file = "test.txt";
+        String file = "puzzle_input.txt";
 
-        List<Double> positions = FileParser.getVals(file);     
-        double[] arr = list_to_array(positions);
+        List<Integer> positions = FileParser.getVals(file);  
 
-        double std_dev = StdStats.stddev(arr);
-        double mean = StdStats.mean(arr);
-        System.out.printf("mean: %f, stddev = %f\n", mean, std_dev);
-
-        // clean the list of positions, removing those outside of 1 stddev
-        Iterator<Double> iter = positions.iterator();
-        while (iter.hasNext()) {
-            Double num = iter.next();
-            if (num > mean + (2*std_dev) ||
-                num < mean - (2*std_dev)){
-                    iter.remove();
-                }
-        }
-
-        // find the new mean... that will be the place to go
-        arr = list_to_array(positions);
-
-        std_dev = StdStats.stddev(arr);
-        mean = StdStats.mean(arr);
-        int dest = (int)Math.round(mean);
+        // find median of numbers
+        Collections.sort(positions);
+        int dest = positions.get(positions.size() / 2);  
         
-        // get all the positions again
-        positions = FileParser.getVals(file);
-
         // now we have to "move" the submarines to that location
         long fuel_cost = 0;
         for (int i = 0; i < positions.size(); i++){
             if (positions.get(i)== dest)
                 continue;    // don't move the ones that are at the destination
-            fuel_cost += ((int)Math.abs(positions.get(i) - dest));
+            fuel_cost += (Math.abs(positions.get(i) - dest));
             positions.remove(i);
-            positions.add(i, (double)dest);
+            positions.add(i, dest);
         }
 
-        System.out.println(fuel_cost);
-        // note: 328659 is too high
-    }
+        System.out.println("Part One\n========");
+        System.out.printf("destination: %d\n", dest);
+        System.out.printf("fuel cost: %d\n", fuel_cost);
 
 
-    private static double[] list_to_array(List<Double> list){ 
-        double[] arr = new double[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            arr[i] = list.get(i);  // StdStats needs an array, not a List
+        positions = FileParser.getVals(file);
+        // find mean of numbers
+        double avg = 0;
+        for (Integer num : positions)
+            avg += num;
+        avg /= positions.size();
+        dest = (int) avg;  
+        
+        // now we have to "move" the submarines to that location
+        fuel_cost = 0;
+        for (int i = 0; i < positions.size(); i++){
+            if (positions.get(i)== dest)
+                continue;    // don't move the ones that are at the destination
+
+            // create an array of fuel costs for that move
+            //   note: this could also be done by using "triangular numbers" (factorials but for addition)
+            int distance = Math.abs(positions.get(i) - dest);
+            int[] distance_cost_vals = new int[distance];
+            for (int j = 0; j < distance_cost_vals.length; j++)
+                distance_cost_vals[j] = j + 1;
+
+            // add the sum of this array to the fuel_cost
+            fuel_cost += IntStream.of(distance_cost_vals).sum();
+            positions.remove(i);
+            positions.add(i, dest);
         }
-        return arr;
-    }
+        
+        System.out.println("\nPart Two\n========");
+        System.out.printf("destination: %d\n", dest);
+        System.out.printf("fuel cost: %d\n", fuel_cost);
 
+        // 343165 is too low
+
+
+    }
 }
 
 
@@ -143,15 +153,15 @@ class FileParser{
 
     /**
      * Takes in the name of a text file that has a single line in it with
-     * numbers separated by commas and returns a List of Doubles.
+     * numbers separated by commas and returns a List of Integers.
      */
-    public static List<Double> getVals(String filename){
-        List<Double> dbl_list = new ArrayList<>();
+    public static List<Integer> getVals(String filename){
+        List<Integer> dbl_list = new ArrayList<>();
         File input = new File(filename);
         try {
             Scanner sc = new Scanner(input).useDelimiter(",");
             while (sc.hasNext()){
-                Double num = Double.parseDouble(sc.next());
+                int num = Integer.parseInt(sc.next());
                 dbl_list.add(num);
             }
             sc.close();
