@@ -1,11 +1,15 @@
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
+
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -67,7 +71,7 @@ import java.nio.file.Paths;
 
 public class Main{
     public static void main(String[] args) {
-        String file = "test.txt";
+        String file = "puzzle_input.txt";
         String[][] outputs = FileParser.getOutputs(file);
         String[][] inputs = FileParser.getInputs(file);
         
@@ -84,15 +88,18 @@ public class Main{
         }
 
         // part one
-        System.out.printf("Digits 1, 4, 7, and/or 8 appear: %d times.\n", unique_dgt_count);
+        System.out.println("Part One\n==========");
+        System.out.printf("Digits 1, 4, 7, and/or 8 appear: %d times.\n\n", unique_dgt_count);
     
         // part two
-        
-        for (String[] input_line : inputs) {
-            
-            SSegDecoder decoder = new SSegDecoder(input_line);
+        long sum = 0;
+        for (int i = 0; i < inputs.length; i++) {
+            SSegDecoder decoder = new SSegDecoder(inputs[i]);
+            sum += decoder.DecodeOutput(outputs[i]);
         }
-    
+        
+        System.out.println("Part Two\n===========");
+        System.out.printf("The sum of all the four-digit output values is: %d", sum);
     
     }
 }
@@ -100,9 +107,9 @@ public class Main{
 
 class SSegDecoder{
     Map<String, Character> map_position_letter = new HashMap<String, Character>();
-    Map<Integer, String> map_num_segs = new HashMap<Integer, String>();
+    Map<Set<Character>, Integer> map_segs_num = new HashMap<Set<Character>, Integer>();
     String[] inputs;
-    String[] positions = {
+    String[] positions = {  // order of this matters!!!
         "top",
         "center",
         "bottom",
@@ -120,48 +127,232 @@ class SSegDecoder{
         for (String pos : positions) {
             map_position_letter.put(pos, find_letter_for_pos(pos));
         }
+
+        // generate the map for decoding a single digit's segments
+        for (int i = 0; i < 10; i++) {
+            map_segs_num.put(find_segs_for_num(i), i);
+        }
     }
 
     private char find_letter_for_pos(String pos){
+        // the most amount of sets we need to decode is 4...
         Set<Character> set1 = new HashSet<Character>();
         Set<Character> set2 = new HashSet<Character>();
+        Set<Character> set3 = new HashSet<Character>();
+        Set<Character> set4 = new HashSet<Character>();
+        List<Set<Character>> sets = new ArrayList<Set<Character>>();
+        sets.add(set1);
+        sets.add(set2);
+        sets.add(set3);
+        sets.add(set4);
+        short set_counter;
 
         switch(pos){
-            case "top":
+            case "top": // ==================================== GET TOP SEGMENT
                 for (String digit_segs : inputs) {
                     if (digit_segs.length() == 2)   // get 1's segs
                         for (char c : digit_segs.toCharArray()) 
-                            set1.add(c);
+                            sets.get(0).add(c);
 
                     else if (digit_segs.length() == 3)  //get 7's segs
                         for (char c : digit_segs.toCharArray()) 
-                            set2.add(c);
+                            sets.get(1).add(c);
                 }
-                set2.removeAll(set1);  // subtract the sets
-                return (char) set2.toArray()[0];
+                sets.get(1).removeAll(sets.get(0));  // subtract the sets
+                return (char) sets.get(1).toArray()[0];
 
-            case "center":
-                break;
-            case "bottom":
-                break;
-            case "bot_right":
-                break;
-            case "top_left":
-                break;
-            case "top_right":
-                break;
-            case "bot_left":
-                break;
+            case "center": // ==================================== GET CENTER SEGMENT
+                set_counter = 0;
+                for (String digit_segs : inputs){
+                    if (digit_segs.length() == 5){   // save the segments of 2,3,5 in their own sets
+                        for (char c : digit_segs.toCharArray())
+                            sets.get(set_counter).add(c);
+                        set_counter++;
+                    }
+                    else if (digit_segs.length() == 4){  // save 4's segments
+                        for (char c : digit_segs.toCharArray())
+                            sets.get(3).add(c);
+                    }
+                }
+                // intersect all the sets
+                for (int i = 1; i < 4; i++) {
+                    sets.get(0).retainAll(sets.get(i));
+                }
+                return (char) sets.get(0).toArray()[0];
+
+            case "bottom": // ==================================== GET BOTTOM SEGMENT
+                set_counter = 0;
+                for (String digit_segs : inputs){
+                    if (digit_segs.length() == 5){   // save the segments of 2,3,5 in their own sets
+                        for (char c : digit_segs.toCharArray())
+                            sets.get(set_counter).add(c);
+                        set_counter++;
+                    }
+                }
+                // intersect those sets
+                for (int i = 1; i < 3; i++) {
+                    sets.get(0).retainAll(sets.get(i));
+                }
+                // subtract the ones we found already
+                for (char c : this.map_position_letter.values()) 
+                    sets.get(0).remove(c);
+                return (char) sets.get(0).toArray()[0];
+
+            case "bot_right": // ==================================== GET BOT_RIGHT SEGMENT
+                set_counter = 0;
+                for (String digit_segs : inputs){
+                    if (digit_segs.length() == 6){   // save the segments of 0,6,9 in their own sets
+                        for (char c : digit_segs.toCharArray())
+                            sets.get(set_counter).add(c);
+                        set_counter++;
+                    }
+                    else if (digit_segs.length() == 2){  // save 1's segments
+                        for (char c : digit_segs.toCharArray())
+                            sets.get(3).add(c);
+                    }
+                }
+                // intersect those sets
+                for (int i = 1; i < 4; i++) {
+                    sets.get(0).retainAll(sets.get(i));
+                }
+                // subtract the ones we found already
+                for (char c : this.map_position_letter.values()) 
+                    sets.get(0).remove(c);
+                return (char) sets.get(0).toArray()[0];
+
+            case "top_left": // ==================================== GET TOP_LEFT SEGMENT
+                set_counter = 0;
+                for (String digit_segs : inputs){
+                    if (digit_segs.length() == 6){   // save the segments of 0,6,9 in their own sets
+                        for (char c : digit_segs.toCharArray())
+                            sets.get(set_counter).add(c);
+                        set_counter++;
+                    }
+                }
+                // intersect those sets
+                for (int i = 1; i < 3; i++) {
+                    sets.get(0).retainAll(sets.get(i));
+                }
+                // subtract the ones we found already
+                for (char c : this.map_position_letter.values()) 
+                    sets.get(0).remove(c);
+                return (char) sets.get(0).toArray()[0];
+
+            case "top_right":// ==================================== GET TOP_RIGHT SEGMENT
+                for (String digit_segs : inputs){
+                    if (digit_segs.length() == 2){   // get 1's segs
+                        for (char c : digit_segs.toCharArray())
+                            sets.get(0).add(c);
+                    }
+                }
+                // subtract the ones we found already
+                for (char c : this.map_position_letter.values()) 
+                    sets.get(0).remove(c);
+                return (char) sets.get(0).toArray()[0];
+
+            case "bot_left": // ==================================== GET BOT_LEFT SEGMENT
+                for (String digit_segs : inputs){
+                    if (digit_segs.length() == 7){   // get 8's segs
+                        for (char c : digit_segs.toCharArray())
+                            sets.get(0).add(c);
+                    }
+                }
+                // subtract the ones we found already
+                for (char c : this.map_position_letter.values()) 
+                    sets.get(0).remove(c);
+                return (char) sets.get(0).toArray()[0];
+
             default:
-                break;
+                return '?';
         }
+    }
+
+    private Set<Character> find_segs_for_num(int num){
+        Set<Character> retSet = new HashSet<>();
+        switch(num){
+            case 0: // add all and remove center
+                for (char c : map_position_letter.values()) 
+                    retSet.add(c);
+                retSet.remove(map_position_letter.get("center"));
+                return retSet;
+                
+            case 1: // add right side
+                retSet.add(map_position_letter.get("top_right"));
+                retSet.add(map_position_letter.get("bot_right"));
+                return retSet;
+                
+            case 2: // add all and remove bot_right and top_left
+                for (char c : map_position_letter.values())
+                    retSet.add(c);
+                retSet.remove(map_position_letter.get("bot_right"));
+                retSet.remove(map_position_letter.get("top_left"));
+                return retSet;
+                
+            case 3: // add all and remove left side
+                for (char c : map_position_letter.values())
+                    retSet.add(c);
+                retSet.remove(map_position_letter.get("top_left"));
+                retSet.remove(map_position_letter.get("bot_left"));
+                return retSet;
+                
+            case 4: // add just those four
+                retSet.add(map_position_letter.get("top_right"));
+                retSet.add(map_position_letter.get("top_left"));
+                retSet.add(map_position_letter.get("center"));
+                retSet.add(map_position_letter.get("bot_right"));
+                return retSet;
+                
+            case 5: // add all and remove bot_left and top_right
+                for (char c : map_position_letter.values())
+                    retSet.add(c);
+                retSet.remove(map_position_letter.get("bot_left"));
+                retSet.remove(map_position_letter.get("top_right"));
+                return retSet;
+                
+            case 6: // add all and remove top_right
+                for (char c : map_position_letter.values())
+                    retSet.add(c);
+                retSet.remove(map_position_letter.get("top_right"));
+                return retSet;
+                
+            case 7: // add just those three
+                retSet.add(map_position_letter.get("top"));
+                retSet.add(map_position_letter.get("top_right"));
+                retSet.add(map_position_letter.get("bot_right"));
+                return retSet;
+                
+            case 8: // add all
+                for (char c : map_position_letter.values())
+                    retSet.add(c);
+                return retSet;
+                
+            case 9: // add all and remove bot_left
+                for (char c : map_position_letter.values())
+                    retSet.add(c);
+                retSet.remove(map_position_letter.get("bot_left"));
+                return retSet;
+                
+            default:
+                return retSet;
+        }
+    }
+
+    /**
+     * Takes in an array of segments (the output) representing the different 
+     * segments and converts them to the corresponding 4-digit number
+     */
+    public int DecodeOutput(String[] segs){
+        int ret = 0;
+        for (int i = 0; i < segs.length; i++) {
+            // convert to set
+            Set<Character> digit_segs = new HashSet<>();
+            for (char c : segs[i].toCharArray())
+                digit_segs.add(c);
             
-
-        Set segs = new HashSet<>(Arrays.asList(pos));
-
-        Arrays.asList(pos);
-
-        return 'a';
+            int num = map_segs_num.get(digit_segs);
+            ret += num * Math.pow(10, 3 - i);
+        }
+        return ret;
     }
 }
 
