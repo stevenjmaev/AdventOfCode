@@ -1,0 +1,12 @@
+{
+    "java.completion.filteredTypes" : [
+        "java.awt.List",
+        "com.sun.*",
+        "javatuples.*"
+    ],
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "c:\\Program Files\\Java\\javatuples-1.2/**/*.jar"
+    ],
+
+}
