@@ -22,15 +22,21 @@ import java.nio.file.Paths;
  * 
  * Then, I will insert the correct character (polymer) according to that rule
  * into the correct index using StringBuilder.insert()
+ * 
+ * 
+ * NOTE: My current implementation will perform 40 steps in more than 18,361,796,381 years !!!!
  */
 
 public class Main{
     public static void main(String[] args) {
-        String file = "puzzle_input.txt";
+        String file = "test.txt";
         String[] lines = FileParser.getLines(file);
 
         // parse the polymer template
-        String polymer = lines[0];
+        List<Character> polymer = new ArrayList<Character>();
+        for (char c : lines[0].toCharArray()) {
+            polymer.add(c);
+        }
         Map<Character, Long> element_occurances = new HashMap<>();
 
         // parse the set of insertion rules
@@ -44,14 +50,14 @@ public class Main{
         // Do 10 (or 40 for part 2) insertion steps
         for (int i = 0; i < 40; i++) {         
             long startTime = System.currentTimeMillis();
-            polymer = do_insertion_step(polymer, rules); 
+            do_insertion_step(polymer, rules); 
             long endTime = System.currentTimeMillis();
             System.out.printf("Step %d took %d milliseconds\n", i + 1, endTime - startTime);
         }
 
         // count the occurances of each element
-        for (int i = 0; i < polymer.length(); i++) {
-            char element = polymer.charAt(i);
+        for (int i = 0; i < polymer.size(); i++) {
+            char element = polymer.get(i);
             if (!element_occurances.containsKey(element)){
                 element_occurances.put(
                     element, 
@@ -62,7 +68,7 @@ public class Main{
 
         // find the elements that have the most and least occurances
         char max_element = '.', min_element = '.';
-        long max = 0, min = polymer.length();
+        long max = 0, min = polymer.size();
         for (char c : element_occurances.keySet()){
             long occurance_count = element_occurances.get(c);
             if (occurance_count > max){
@@ -79,20 +85,16 @@ public class Main{
         System.out.printf("The least common element is '%c' with %d occurances.\n", min_element, min);
         System.out.printf("%d - %d = %d\n", max, min, max - min);
         
-
-        
-
-        
     }
 
-    private static String do_insertion_step(String polymer, Map<String, Character> rules){
-        StringBuilder sb = new StringBuilder(polymer);
+    private static void do_insertion_step(List<Character> polymer, Map<String, Character> rules){
         // scan the polymer for any matches to the rules and log the indeces that it happens
         List<Integer> pair_matches = new ArrayList<>();
-        for (int i = 0; i < polymer.length(); i++){
-            if (i == polymer.length() - 1)
+        for (int i = 0; i < polymer.size() - 1; i++){
+            if (i == polymer.size() - 1)
                 continue;
-            if (rules.containsKey(polymer.substring(i, i+2))){
+            String pair = String.format("%c%c", polymer.get(i), polymer.get(i + 1));
+            if (rules.containsKey(pair)){
                 pair_matches.add(i);
             }
         }
@@ -102,17 +104,16 @@ public class Main{
         pair_matches.sort(null);
         for (int i = pair_matches.size() - 1; i >= 0; i--){
             int idx = pair_matches.get(i);
-            sb.insert(idx + 1, rules.get(polymer.substring(idx, idx + 2)));
+            String pair = String.format("%c%c", polymer.get(idx), polymer.get(idx + 1));
+            polymer.add(idx + 1, rules.get(pair));
         }
-
-        return sb.toString();
     }
 
-    private static long count_occurance(String polymer, char c){
+    private static long count_occurance(List<Character> polymer, char c){
         long count = 0;
 
-        for (int i = 0; i < polymer.length(); i++){
-            if (polymer.charAt(i) == c)
+        for (int i = 0; i < polymer.size(); i++){
+            if (polymer.get(i) == c)
                 count++;
         }
         return count;
