@@ -57,17 +57,14 @@ public class Main{
         // parse the polymer and do the following:
         // 1. Count how many of each element
         // 2. Log any rule pairs that occur
-        Map<Character, Integer> element_count = new HashMap<>();
-        Map<String, Integer> rule_pairs = new HashMap<>();
-        for (String pair : rules.keySet()) {            // initialize pairs to zero
-            rule_pairs.put(pair, 0);        
-        }
-        for (int i = 0; i < lines[0].length(); i++){                    // increment pair count
-            element_count.merge(lines[0].charAt(i), 1, Integer::sum);   // count the element occurances
-            if (i == lines[0].length() - 1) continue;                   // the last element in the polymer
+        Map<Character, Long> element_count = new HashMap<>();
+        Map<String, Long> rule_pairs = new HashMap<>();
+        for (int i = 0; i < lines[0].length(); i++){                        // increment pair count
+            element_count.merge(lines[0].charAt(i), (long)1, Long::sum);    // count the element occurances
+            if (i == lines[0].length() - 1) continue;                       // the last element in the polymer
             String pair = String.format("%c%c", lines[0].charAt(i), lines[0].charAt(i + 1));
             if (rules.containsKey(pair)){
-                rule_pairs.merge(pair, 1, Integer::sum);                // increment the count for that pair
+                rule_pairs.merge(pair, (long)1, Long::sum);                 // increment the count for that pair
             }
         }
 
@@ -80,12 +77,14 @@ public class Main{
             System.out.printf("Step %d took %d milliseconds\n", i + 1, endTime - startTime);
         }
 
-        print_status(element_count, rule_pairs);
+        // (debug print)
+        // print_status(element_count, rule_pairs);
 
-
-        // System.out.printf("The most common element is '%c' with %d occurances.\n", max_element, max);
-        // System.out.printf("The least common element is '%c' with %d occurances.\n", min_element, min);
-        // System.out.printf("%d - %d = %d\n", max, min, max - min);
+        Long min = Collections.min(element_count.values());
+        Long max = Collections.max(element_count.values());
+        System.out.printf("The most common element has %d occurances.\n", max);
+        System.out.printf("The least common element has %d occurances.\n", min);
+        System.out.printf("%d - %d = %d\n", max, min, max - min);
         
     }
 
@@ -95,48 +94,42 @@ public class Main{
      *      rules:          the record of which element to insert when certain pairs are present
      *      rule_pairs:     pairs that exist in the polymer that will create create a new pair in the next step
      */
-    private static void do_insertion_step(  Map<Character, Integer> element_count, 
+    private static void do_insertion_step(  Map<Character, Long> element_count, 
                                             Map<String, Character> rules, 
-                                            Map<String, Integer> rule_pairs)
+                                            Map<String, Long> rule_pairs)
     {
-        long num_insertions = 0;
-        Map<String, Integer> new_rule_pairs = new HashMap<>();    // I might need to make this another hashmap...
+        Map<String, Long> new_rule_pairs = new HashMap<>();
+        
         // apply the rules to the rule_pairs and add any new_rule_pairs
         for (String pair : rule_pairs.keySet()) {
             if(rule_pairs.get(pair) == 0) continue;
             
-            // for each occurance of that pair...
-            int num_occurances = rule_pairs.get(pair);
-            for (int i = 0; i < num_occurances; i++){
-                char new_element = rules.get(pair);
-                element_count.merge(new_element, 1, Integer::sum);
-                num_insertions++;
+            long num_occurances = rule_pairs.get(pair);
+            char new_element = rules.get(pair);
+            element_count.merge(new_element, num_occurances, Long::sum);
 
-                // figure out if the 2 new pairs that are generated should be included in rule_pairs
-                // e.g.   for rules  CH -> B, CB -> H, BH -> H
-                //        "CH" then becomes "CBH", which then contains "CB" and "BH" 
-                //        both of these new pairs are included in the rules.keyset() !!!
-                String new_pair1 = String.format("%c%c", pair.charAt(0), new_element);  // find the new pair
-                String new_pair2 = String.format("%c%c", new_element, pair.charAt(1));  // find the new pair
-                if (rules.keySet().contains(new_pair1)) new_rule_pairs.merge(new_pair1, 1, Integer::sum);  // add to the list of important new pairs
-                if (rules.keySet().contains(new_pair2)) new_rule_pairs.merge(new_pair2, 1, Integer::sum);  // add to the list of important new pairs
-                rule_pairs.merge(pair, -1, Integer::sum);   // take that occurance away
-            }
+            // figure out if the 2 new pairs that are generated should be included in rule_pairs
+            // e.g.   for rules  CH -> B, CB -> H, BH -> H
+            //        "CH" then becomes "CBH", which then contains "CB" and "BH" 
+            //        both of these new pairs are included in the rules.keyset() !!!
+            String new_pair1 = String.format("%c%c", pair.charAt(0), new_element);  // find the new pair
+            String new_pair2 = String.format("%c%c", new_element, pair.charAt(1));  // find the new pair
+            if (rules.keySet().contains(new_pair1)) new_rule_pairs.merge(new_pair1, num_occurances, Long::sum);  // add to the list of important new pairs
+            if (rules.keySet().contains(new_pair2)) new_rule_pairs.merge(new_pair2, num_occurances, Long::sum);  // add to the list of important new pairs
+            rule_pairs.merge(pair, -num_occurances, Long::sum);                     // take those occurances away from rule_pairs
         }
-        // after we take care of the existing rule pairs, add the new ones for next time...
+
+        // after we take care of the existing rule pairs, add the new ones for the next step...
         for (String pair : new_rule_pairs.keySet()){
-            rule_pairs.merge(pair, new_rule_pairs.get(pair), Integer::sum);
+            rule_pairs.merge(pair, new_rule_pairs.get(pair), Long::sum);
         }
-        System.out.printf("There are %d new insertions this step\n", num_insertions);
     }
 
-    private static void print_status(Map<Character, Integer> element_count, Map<String, Integer> rule_pairs){
-
+    private static void print_status(Map<Character, Long> element_count, Map<String, Long> rule_pairs){
         System.out.println("rule_pairs:\n===========");
         for (String pair : rule_pairs.keySet()) {
             System.out.printf("%s : %d\n", pair, rule_pairs.get(pair));
         }
-
         System.out.println("element count:\n===========");
         for (Character c : element_count.keySet()) {
             System.out.printf("%c : %d\n", c, element_count.get(c));
