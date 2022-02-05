@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,20 +25,26 @@ import java.nio.file.Paths;
  * into the correct index using StringBuilder.insert()
  * 
  * 
+ * 
+ * 
+ * 
  * NOTE: My current implementation will perform 40 steps in more than 18,361,796,381 years !!!!
+ * 
+ * Note: The problem is that I'm iterating over the entire polymer!!
+ * At the end of the day, all I care about is the NUMBER of each element that exists.
+ * Sooo....
+ * I could store the number of pairs at the end of a step (e.g. There are 15 'CH' pairs) (do this in a HashMap)
+ * Then, on the next step, I know how many 'B's to add. 
+ * 
+ * 
+ * 
+ * 
  */
 
 public class Main{
     public static void main(String[] args) {
-        String file = "test.txt";
+        String file = "puzzle_input.txt";
         String[] lines = FileParser.getLines(file);
-
-        // parse the polymer template
-        List<Character> polymer = new ArrayList<Character>();
-        for (char c : lines[0].toCharArray()) {
-            polymer.add(c);
-        }
-        Map<Character, Long> element_occurances = new HashMap<>();
 
         // parse the set of insertion rules
         Map<String, Character> rules = new HashMap<>();
@@ -47,76 +54,93 @@ public class Main{
             sc.close();
         }
 
+        // parse the polymer and do the following:
+        // 1. Count how many of each element
+        // 2. Log any rule pairs that occur
+        Map<Character, Integer> element_count = new HashMap<>();
+        Map<String, Integer> rule_pairs = new HashMap<>();
+        for (String pair : rules.keySet()) {            // initialize pairs to zero
+            rule_pairs.put(pair, 0);        
+        }
+        for (int i = 0; i < lines[0].length(); i++){                    // increment pair count
+            element_count.merge(lines[0].charAt(i), 1, Integer::sum);   // count the element occurances
+            if (i == lines[0].length() - 1) continue;                   // the last element in the polymer
+            String pair = String.format("%c%c", lines[0].charAt(i), lines[0].charAt(i + 1));
+            if (rules.containsKey(pair)){
+                rule_pairs.merge(pair, 1, Integer::sum);                // increment the count for that pair
+            }
+        }
+
+
         // Do 10 (or 40 for part 2) insertion steps
         for (int i = 0; i < 40; i++) {         
             long startTime = System.currentTimeMillis();
-            do_insertion_step(polymer, rules); 
+            do_insertion_step(element_count, rules, rule_pairs); 
             long endTime = System.currentTimeMillis();
             System.out.printf("Step %d took %d milliseconds\n", i + 1, endTime - startTime);
         }
 
-        // count the occurances of each element
-        for (int i = 0; i < polymer.size(); i++) {
-            char element = polymer.get(i);
-            if (!element_occurances.containsKey(element)){
-                element_occurances.put(
-                    element, 
-                    count_occurance(polymer, element)
-                    );
-            }
-        }
+        print_status(element_count, rule_pairs);
 
-        // find the elements that have the most and least occurances
-        char max_element = '.', min_element = '.';
-        long max = 0, min = polymer.size();
-        for (char c : element_occurances.keySet()){
-            long occurance_count = element_occurances.get(c);
-            if (occurance_count > max){
-                max = occurance_count;
-                max_element = c;
-            }
-            if (occurance_count < min){
-                min = occurance_count;
-                min_element = c;
-            }
-        }
 
-        System.out.printf("The most common element is '%c' with %d occurances.\n", max_element, max);
-        System.out.printf("The least common element is '%c' with %d occurances.\n", min_element, min);
-        System.out.printf("%d - %d = %d\n", max, min, max - min);
+        // System.out.printf("The most common element is '%c' with %d occurances.\n", max_element, max);
+        // System.out.printf("The least common element is '%c' with %d occurances.\n", min_element, min);
+        // System.out.printf("%d - %d = %d\n", max, min, max - min);
         
     }
 
-    private static void do_insertion_step(List<Character> polymer, Map<String, Character> rules){
-        // scan the polymer for any matches to the rules and log the indeces that it happens
-        List<Integer> pair_matches = new ArrayList<>();
-        for (int i = 0; i < polymer.size() - 1; i++){
-            if (i == polymer.size() - 1)
-                continue;
-            String pair = String.format("%c%c", polymer.get(i), polymer.get(i + 1));
-            if (rules.containsKey(pair)){
-                pair_matches.add(i);
+    /**
+     * Function that takes in 3 HashMaps:
+     *      element_count:  stores the occurence count of each element
+     *      rules:          the record of which element to insert when certain pairs are present
+     *      rule_pairs:     pairs that exist in the polymer that will create create a new pair in the next step
+     */
+    private static void do_insertion_step(  Map<Character, Integer> element_count, 
+                                            Map<String, Character> rules, 
+                                            Map<String, Integer> rule_pairs)
+    {
+        long num_insertions = 0;
+        Map<String, Integer> new_rule_pairs = new HashMap<>();    // I might need to make this another hashmap...
+        // apply the rules to the rule_pairs and add any new_rule_pairs
+        for (String pair : rule_pairs.keySet()) {
+            if(rule_pairs.get(pair) == 0) continue;
+            
+            // for each occurance of that pair...
+            int num_occurances = rule_pairs.get(pair);
+            for (int i = 0; i < num_occurances; i++){
+                char new_element = rules.get(pair);
+                element_count.merge(new_element, 1, Integer::sum);
+                num_insertions++;
+
+                // figure out if the 2 new pairs that are generated should be included in rule_pairs
+                // e.g.   for rules  CH -> B, CB -> H, BH -> H
+                //        "CH" then becomes "CBH", which then contains "CB" and "BH" 
+                //        both of these new pairs are included in the rules.keyset() !!!
+                String new_pair1 = String.format("%c%c", pair.charAt(0), new_element);  // find the new pair
+                String new_pair2 = String.format("%c%c", new_element, pair.charAt(1));  // find the new pair
+                if (rules.keySet().contains(new_pair1)) new_rule_pairs.merge(new_pair1, 1, Integer::sum);  // add to the list of important new pairs
+                if (rules.keySet().contains(new_pair2)) new_rule_pairs.merge(new_pair2, 1, Integer::sum);  // add to the list of important new pairs
+                rule_pairs.merge(pair, -1, Integer::sum);   // take that occurance away
             }
         }
-
-        // sort the list do the insertions "backwards"
-        //    note: this will prevent index mutilation
-        pair_matches.sort(null);
-        for (int i = pair_matches.size() - 1; i >= 0; i--){
-            int idx = pair_matches.get(i);
-            String pair = String.format("%c%c", polymer.get(idx), polymer.get(idx + 1));
-            polymer.add(idx + 1, rules.get(pair));
+        // after we take care of the existing rule pairs, add the new ones for next time...
+        for (String pair : new_rule_pairs.keySet()){
+            rule_pairs.merge(pair, new_rule_pairs.get(pair), Integer::sum);
         }
+        System.out.printf("There are %d new insertions this step\n", num_insertions);
     }
 
-    private static long count_occurance(List<Character> polymer, char c){
-        long count = 0;
+    private static void print_status(Map<Character, Integer> element_count, Map<String, Integer> rule_pairs){
 
-        for (int i = 0; i < polymer.size(); i++){
-            if (polymer.get(i) == c)
-                count++;
+        System.out.println("rule_pairs:\n===========");
+        for (String pair : rule_pairs.keySet()) {
+            System.out.printf("%s : %d\n", pair, rule_pairs.get(pair));
         }
-        return count;
+
+        System.out.println("element count:\n===========");
+        for (Character c : element_count.keySet()) {
+            System.out.printf("%c : %d\n", c, element_count.get(c));
+        }
     }
 }
 
